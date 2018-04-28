@@ -374,15 +374,11 @@ def tags_qx(term_str):
                         return None
             except:
                 return None
-    # print(cut_term_list)
-    # 最后一位如果是数字需要pass掉
-
         return json.dumps({'label': format_str(term_str), 'detail_data': [eval(v) for v in set([str(k) for k in detail_data_r])]}, ensure_ascii=False)  # 去重
 
 # 处理资金额度返回json  main_3
 def tags_je(money_strs):
     re_com2 = re.compile(r'([\d.]+W|[\d.]+KW|[\d.]+E|[\d.]+万|[\d.]+千万|[\d.]+亿|[1-9]{1}\d{2,3})')
-    # s = money_strs
     money_strs = money_strs.replace('千万', 'KW').replace('万', 'W').replace('亿', 'E').replace('元', '')
     # 统一量级单位
     money_list = re_com2.findall(money_strs)
@@ -442,7 +438,6 @@ def tags_je(money_strs):
     except:
         return None
 
-###### 脚本主体部分 ######
 hour_start = int(input(r'请输入抓取时间起始( 如：早上7点为7，下午1点为13 )：'))
 hour_end = int(input(r'请输入抓取时间截止( 如：早上7点为7，下午1点为13 )：'))
 freq = int(input(r'请输入抓取频率( 如：5秒一次为5，建议频率大于5为宜 )：'))
@@ -450,7 +445,6 @@ freq = int(input(r'请输入抓取频率( 如：5秒一次为5，建议频率大
 while True:
     local_time_hour = time.localtime(time.time())[3]
     if local_time_hour in range(hour_start, hour_end):
-        # 全半角转换字典
         conv_dict = {'１': 1, '２': 2, '３': 3, '４': 4, '５': 5, '６': 6, '７': 7, '８': 8, '９': 9,  '０': 0, 'Ｄ': 'D',
                      'Ｍ': 'M', 'Ａ': 'A', 'Ｅ': 'E', 'Ｗ': 'W', 'Ｋ': 'K', '一': 1, '二': 2, '两': 2, '俩': 2, '三': 3,
                      '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '：': ':'}
