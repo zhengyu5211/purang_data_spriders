@@ -7,7 +7,7 @@ import json
 import datetime
 import time
 # 添加自定义字典
-jieba.load_userdict(r'c:\users\zhengyu\desktop\userdict.txt')
+jieba.load_userdict(r'userdict.txt')
 stop_words_lists = ['出隔', '借隔', '出农信', '出线', '或出']
 for stop_word in stop_words_lists:
     jieba.del_word(stop_word)
@@ -374,11 +374,15 @@ def tags_qx(term_str):
                         return None
             except:
                 return None
+    # print(cut_term_list)
+    # 最后一位如果是数字需要pass掉
+
         return json.dumps({'label': format_str(term_str), 'detail_data': [eval(v) for v in set([str(k) for k in detail_data_r])]}, ensure_ascii=False)  # 去重
 
 # 处理资金额度返回json  main_3
 def tags_je(money_strs):
     re_com2 = re.compile(r'([\d.]+W|[\d.]+KW|[\d.]+E|[\d.]+万|[\d.]+千万|[\d.]+亿|[1-9]{1}\d{2,3})')
+    # s = money_strs
     money_strs = money_strs.replace('千万', 'KW').replace('万', 'W').replace('亿', 'E').replace('元', '')
     # 统一量级单位
     money_list = re_com2.findall(money_strs)
@@ -438,6 +442,7 @@ def tags_je(money_strs):
     except:
         return None
 
+###### 脚本主体部分 ######
 hour_start = int(input(r'请输入抓取时间起始( 如：早上7点为7，下午1点为13 )：'))
 hour_end = int(input(r'请输入抓取时间截止( 如：早上7点为7，下午1点为13 )：'))
 freq = int(input(r'请输入抓取频率( 如：5秒一次为5，建议频率大于5为宜 )：'))
@@ -445,6 +450,7 @@ freq = int(input(r'请输入抓取频率( 如：5秒一次为5，建议频率大
 while True:
     local_time_hour = time.localtime(time.time())[3]
     if local_time_hour in range(hour_start, hour_end):
+        # 全半角转换字典
         conv_dict = {'１': 1, '２': 2, '３': 3, '４': 4, '５': 5, '６': 6, '７': 7, '８': 8, '９': 9,  '０': 0, 'Ｄ': 'D',
                      'Ｍ': 'M', 'Ａ': 'A', 'Ｅ': 'E', 'Ｗ': 'W', 'Ｋ': 'K', '一': 1, '二': 2, '两': 2, '俩': 2, '三': 3,
                      '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '：': ':'}
@@ -452,7 +458,7 @@ while True:
         conn = pymysql.connect(host='10.10.128.116', user='root', password='111111', database='pdb', charset='utf8')
         cursor = conn.cursor()
         sqls = r'''
-select FT,F3,F2,F5,F4 from (
+        		select FT,F3,F2,F5,F4 from (
     SELECT Ft,F3,F2,F5,F4,
     if(@cont=stat_tmp.F5 and @qq = stat_tmp.F3,@rank:=@rank+1,@rank:=1) as rank,
     @cont:=stat_tmp.F5,
@@ -466,11 +472,11 @@ select FT,F3,F2,F5,F4 from (
         and F5 not like '%理财%'
         and F5 NOT REGEXP '[0-9]{5,}'
         and CAST(F4 as date) = cast(SYSDATE() as date) # 增量处理
-        and Ft not in (select distinct F1 from P12091 t 
+        and Ft not in (select distinct F1 from P12091 t
 where cast(t.F12 as date) = cast(SYSDATE() as date))
 				order by F5,F3 asc, FT desc
     ) stat_tmp ,(select @cont:= null, @qq := null ,@rank:=0) a
-    )result where result.rank = 1 
+    )result where result.rank = 1
         '''
         cursor.execute(sqls)
         data = cursor.fetchall()
@@ -492,16 +498,17 @@ where cast(t.F12 as date) = cast(SYSDATE() as date))
                     F3 = re.sub(r'【.*】', '', i[2])  # 称呼
                     F12 = str(j[-1])  # qq准确发言时间
                     F11 = ''.join(sss)  # 原文、行
-                    cursor.execute(r'''select F11,cast(F12 as char) as F12 from P12091 w
-                                                        where cast(F12 as date) = cast(SYSDATE() as date)
-                                                        order by F11 asc, cast(F12 as datetime) asc ''')  # 获取当日已经存在的数据,注意排序方式保证下面生成字典仅保留原文相同情况下最大的时间戳
-                    data_exists = cursor.fetchall()  # P12091已经存在的数据
-                    data_exists_d = {k: v for k, v in data_exists}  # 处理成为字典，原文相同，时间最大
-                    if F11 in data_exists_d.keys():  # 时间差在120秒以内
-                        date_time_delta = sorted([datetime.datetime.strptime(data_exists_d[F11], '%Y%m%d%H%M%S'),
-                                                  datetime.datetime.strptime(F12, '%Y%m%d%H%M%S')])
-                        if (date_time_delta[-1] - date_time_delta[0]).seconds <= 120:
-                            continue
+                    cursor.execute(r'''
+select F11,cast(F12 as char) as F12 from P12091 w
+where cast(F12 as date) = cast(SYSDATE() as date)
+and F2 = %s
+and F11 = %s
+and F12 <= date_add(cast(%s as datetime), INTERVAL 2 MINUTE)
+and F12 >= date_add(cast(%s as datetime), INTERVAL -2 MINUTE)
+''', (F2, F11, F12, F12))  # 获取当日相同发言人内容一致的发言时间前后2分钟内的记录数
+                    data_rowcount = cursor.rowcount  # 记录数
+                    if data_rowcount != 0:  # 存在相同
+                        continue
                     for d in func_finl_cut(sss):
                         F4 = d['Tr_dir']  # 交易方向
                         F5 = re.sub(r'\d{1,2}:\d{1,2}', '', ''.join(d['期限']))  # 期限文本
