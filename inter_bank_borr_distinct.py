@@ -452,7 +452,7 @@ while True:
         conn = pymysql.connect(host='10.10.128.116', user='root', password='111111', database='pdb', charset='utf8')
         cursor = conn.cursor()
         sqls = r'''
-        		select FT,F3,F2,F5,F4 from (
+select FT,F3,F2,F5,F4 from (
     SELECT Ft,F3,F2,F5,F4,
     if(@cont=stat_tmp.F5 and @qq = stat_tmp.F3,@rank:=@rank+1,@rank:=1) as rank,
     @cont:=stat_tmp.F5,
@@ -494,8 +494,7 @@ where cast(t.F12 as date) = cast(SYSDATE() as date))
                     F11 = ''.join(sss)  # 原文、行
                     cursor.execute(r'''select F11,cast(F12 as char) as F12 from P12091 w
                                                         where cast(F12 as date) = cast(SYSDATE() as date)
-                                                        order by F11 asc, cast(F12 as datetime) asc
-                                                        ''')  # 获取当日已经存在的数据,注意排序方式保证下面生成字典仅保留原文相同情况下最大的时间戳
+                                                        order by F11 asc, cast(F12 as datetime) asc ''')  # 获取当日已经存在的数据,注意排序方式保证下面生成字典仅保留原文相同情况下最大的时间戳
                     data_exists = cursor.fetchall()  # P12091已经存在的数据
                     data_exists_d = {k: v for k, v in data_exists}  # 处理成为字典，原文相同，时间最大
                     if F11 in data_exists_d.keys():  # 时间差在120秒以内
